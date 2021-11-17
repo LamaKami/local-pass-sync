@@ -1,0 +1,20 @@
+# private ed25519 key
+ed25519private:
+  password:
+  path: ~/.ssh/id_ed25519
+# server
+server:
+  domain: localhost
+  port: 8081
+  authorized_keys_path: ~/.ssh/authorized_keys
+
+# password for client_keepass and server_keepass has to be set only on the server
+
+# set path only on client
+client_keepass:
+  path: ~/Downloads/exampleClient.kdbx
+  password: abcdefg12345678
+# set both only on server
+server_keepass:
+  path: ~/Downloads/exampleServer.kdbx
+  password: abcdefg12345678
