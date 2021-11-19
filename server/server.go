@@ -67,6 +67,7 @@ type Payload struct {
 	Key string `json:"key"`
 	File string `json:"file"`
 	Signature string `json:"signature"`
+	Message string `json:"message"`
 }
 
 func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +111,12 @@ func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
 	clientDb := unlockDatabase(keepassFile, cfg.ClientKeepass.Password)
 	serverDb := unlockDatabase(getServerDb(), cfg.ServerKeepass.Password)
 
-	compareDatabases(clientDb, serverDb)
+	if !compareDatabases(clientDb, serverDb){
+		LockDatabase(clientDb)
+		LockDatabase(serverDb)
+		payload := createResponse("", make([]byte, 0), "", "Success but no need to changed files")
+		sendResponseToClient(w, payload)
+	}
 
 	LockDatabase(clientDb)
 	saveAndLockDatabase(cfg.ServerKeepass.Path,serverDb)
@@ -120,23 +126,28 @@ func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Error while loading new file")
 	}
 
+	payload := createResponse("", serverFile, "", "Success file changed")
+	sendResponseToClient(w, payload)
+}
+
+func createResponse(key string, serverFile []byte, sig string, message string)[]byte{
 	payload := Payload{
-		Key: "Key",
+		Key: key,
 		File: base64.StdEncoding.EncodeToString(serverFile),
-		Signature: "sig",
+		Signature: sig,
+		Message: message,
 	}
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		log.Fatal(err)
 	}
+	return payloadBytes
+}
 
-	if err != nil {
-		internalServerError(w)
-		return
-	}
+func sendResponseToClient(w http.ResponseWriter, payload []byte){
 	w.WriteHeader(http.StatusOK)
-	w.Write(payloadBytes)
+	w.Write(payload)
 }
 
 func getServerDb() []byte{

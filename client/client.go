@@ -51,14 +51,19 @@ func SendRequest(cfg c.Config){
 		log.Fatal(err)
 	}
 
-	// Overwriting old file
-	outFile, _ := os.Create(cfg.ClientKeepass.Path)
-
-
 	var returnPayload s.Payload
 	if err := json.NewDecoder(resp.Body).Decode(&returnPayload); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf(returnPayload.Message)
+
+	// Overwriting old file
+	if len(returnPayload.File) == 0{
+		return
+	}
+
+	outFile, _ := os.Create(cfg.ClientKeepass.Path)
 
 	decodedFile, err := base64.StdEncoding.DecodeString(returnPayload.File)
 	if err != nil{
