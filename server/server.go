@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	listUserRe = regexp.MustCompile(`^\/compare[\/]*$`)
 	createUserRe = regexp.MustCompile(`^\/compare[\/]*$`)
 )
 
@@ -58,7 +57,10 @@ func handleRequest(){
 	mux := http.NewServeMux()
 	mux.Handle("/compare",userH)
 	mux.Handle("/compare/",userH)
-	http.ListenAndServeTLS(":8081", cfg.SslCertificate.SelfSignedCertificate, cfg.SslCertificate.Key, mux)
+	err := http.ListenAndServeTLS(":8081", cfg.SslCertificate.SelfSignedCertificate, cfg.SslCertificate.Key, mux)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type Payload struct {

@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
@@ -33,13 +34,19 @@ func SendRequest(cfg c.Config){
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest("POST", "http://" + cfg.Server.Domain + ":" + cfg.Server.Port + "/compare", body)
+	req, err := http.NewRequest("POST", "https://" + cfg.Server.Domain + ":" + cfg.Server.Port + "/compare", body)
 	if err != nil {
 		log.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	// TODO insecure this part has to be changed
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
