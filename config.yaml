@@ -18,3 +18,8 @@ client_keepass:
 server_keepass:
   path: ~/Downloads/exampleServer.kdbx
   password: abcdefg12345678
+# see the documentation to learn how to create the files
+# only on the server needed
+ssl_certificate:
+  self_signed_certificate: localhost.crt
+  key: localhost.key

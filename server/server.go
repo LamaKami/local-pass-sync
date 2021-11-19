@@ -58,7 +58,7 @@ func handleRequest(){
 	mux := http.NewServeMux()
 	mux.Handle("/compare",userH)
 	mux.Handle("/compare/",userH)
-	http.ListenAndServe(":8081", mux)
+	http.ListenAndServeTLS(":8081", cfg.SslCertificate.SelfSignedCertificate, cfg.SslCertificate.Key, mux)
 }
 
 type Payload struct {

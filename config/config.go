@@ -28,6 +28,11 @@ type Config struct {
 		Password	string
 		Path 		string
 	}`yaml:"server_keepass"`
+	SslCertificate struct{
+		SelfSignedCertificate string `yaml:"self_signed_certificate"`
+		Key		    		  string
+
+	}`yaml:"ssl_certificate"`
 }
 
 
