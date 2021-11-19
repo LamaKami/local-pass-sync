@@ -12,11 +12,11 @@ server:
 
 # set path only on client
 client_keepass:
-  path: ~/Downloads/exampleClient.kdbx
+  path: exampleFiles/exampleClient.kdbx
   password: abcdefg12345678
 # set both only on server
 server_keepass:
-  path: ~/Downloads/exampleServer.kdbx
+  path: exampleFiles/exampleServer.kdbx
   password: abcdefg12345678
 # see the documentation to learn how to create the files
 # only on the server needed
