@@ -14,14 +14,17 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatal("Not enough arguments!")
 	}
+
 	var cfg c.Config
-	c.LoadConfig(&cfg)
+	if err := c.LoadConfig(&cfg); err != nil{
+		log.Fatal("Error while loading Config: ", err)
+	}
 
 	switch os.Args[1] {
 	case "server":
 		server.Serving(cfg)
 	case "client":
-		client.SendRequest(cfg)
+		client.HandlingRequest(cfg)
 	case "pubKey":
 		privateKey, _ := k.GetPublicAndPrivateKey(cfg.Ed25519private.Path)
 		k.PrintPublicKey(privateKey)
