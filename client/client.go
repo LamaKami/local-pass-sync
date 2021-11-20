@@ -41,8 +41,10 @@ func HandlingRequest(cfg c.Config){
 		}
 	}(resp.Body)
 
-	if handleResponse(cfg, resp) != nil{
+	if err, changed := handleResponse(cfg, resp); err != nil{
 		log.Fatal("While handling the server response, the following error occurred: ", err)
+	} else if !changed{
+		return
 	}
 
 	log.Println("File was successfully changed on the client")
@@ -85,7 +87,8 @@ func createClient() *http.Client{
 }
 
 // Writes the response data to disk if the file has changed
-func handleResponse(cfg c.Config, resp *http.Response) error{
+// The Boolean indicated if the file was changed
+func handleResponse(cfg c.Config, resp *http.Response) (error, bool){
 	var returnPayload s.Payload
 	if err := json.NewDecoder(resp.Body).Decode(&returnPayload); err != nil {
 		log.Fatal(err)
@@ -95,22 +98,22 @@ func handleResponse(cfg c.Config, resp *http.Response) error{
 
 	// Checks if there is a new file to write to disk
 	if len(returnPayload.File) == 0{
-		return nil
+		return nil, false
 	}
 
 	decodedFile, err := base64.StdEncoding.DecodeString(returnPayload.File)
 	if err != nil{
-		return err
+		return err, false
 	}
 
 	outFile, err := os.Create(cfg.ClientKeepass.Path)
 	if err != nil{
-		return err
+		return err, false
 	}
 
 	_, err = outFile.Write(decodedFile)
 	if err != nil {
-		return err
+		return err, false
 	}
-	return outFile.Close()
+	return outFile.Close(), true
 }
