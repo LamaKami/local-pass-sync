@@ -114,7 +114,7 @@ func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !compareDatabases(clientDb, serverDb){
 		LockDatabase(clientDb)
 		LockDatabase(serverDb)
-		payload := createResponse("", make([]byte, 0), "", "Success but no need to changed files")
+		payload := createResponse("", make([]byte, 0), "", "Success, but no need to change files")
 		sendResponseToClient(w, payload)
 	}
 
@@ -126,7 +126,7 @@ func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Error while loading new file")
 	}
 
-	payload := createResponse("", serverFile, "", "Success file changed")
+	payload := createResponse("", serverFile, "", "File was successfully modified by the server")
 	sendResponseToClient(w, payload)
 }
 

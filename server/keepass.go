@@ -37,6 +37,7 @@ func unlockDatabase(keepassFile []byte, password string) *gokeepasslib.Database{
 func saveAndLockDatabase(path string, db *gokeepasslib.Database){
 	file, err := os.Create(path)
 	if err != nil{
+		// TODO
 		log.Fatal(err)
 	}
 

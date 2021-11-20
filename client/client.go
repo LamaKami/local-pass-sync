@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	c "local-pass-sync/config"
 	k "local-pass-sync/key"
@@ -15,10 +16,44 @@ import (
 	"os"
 )
 
-func SendRequest(cfg c.Config){
+// HandlingRequest uses the config to create the request and also handles the server response
+func HandlingRequest(cfg c.Config){
+	body, err := createRequestBody(cfg)
+	if err != nil{
+		log.Fatal("While creating the request body with the kdbx file and the keys," +
+			" the following error occurred: ", err)
+	}
+
+	req, err := createPostRequest(cfg, body)
+	if err != nil{
+		log.Fatal("While creating the post request, the following error occurred: ", err)
+	}
+
+	resp, err := createClient().Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Fatal("While closing the request body, the following error occurred: ",err)
+		}
+	}(resp.Body)
+
+	if handleResponse(cfg, resp) != nil{
+		log.Fatal("While handling the server response, the following error occurred: ", err)
+	}
+
+	log.Println("File was successfully changed on the client")
+}
+
+// creates a byte reader from the kdbx file and the ed25519 keys
+// the returned reader can be used as the body parameter for a http request
+func createRequestBody(cfg c.Config) (*bytes.Reader, error){
 	f, err := ioutil.ReadFile(cfg.ClientKeepass.Path)
 	if err != nil{
-		log.Fatal(err)
+		return nil, err
 	}
 	privateKey, pubKey := k.GetPublicAndPrivateKey(cfg.Ed25519private.Path)
 
@@ -29,28 +64,28 @@ func SendRequest(cfg c.Config){
 	}
 
 	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		log.Fatal(err)
-	}
-	body := bytes.NewReader(payloadBytes)
 
+	return bytes.NewReader(payloadBytes), err
+}
+
+// creates a post request with the given config and the body payload
+func createPostRequest(cfg c.Config, body *bytes.Reader) (*http.Request, error){
 	req, err := http.NewRequest("POST", "https://" + cfg.Server.Domain + ":" + cfg.Server.Port + "/compare", body)
-	if err != nil {
-		log.Fatal(err)
-	}
 	req.Header.Set("Content-Type", "application/json")
+	return req, err
+}
 
+// creates a client for a https request
+func createClient() *http.Client{
 	// TODO insecure this part has to be changed
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	return &http.Client{Transport: tr}
+}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+// Writes the response data to disk if the file has changed
+func handleResponse(cfg c.Config, resp *http.Response) error{
 	var returnPayload s.Payload
 	if err := json.NewDecoder(resp.Body).Decode(&returnPayload); err != nil {
 		log.Fatal(err)
@@ -58,22 +93,24 @@ func SendRequest(cfg c.Config){
 
 	log.Printf(returnPayload.Message)
 
-	// Overwriting old file
+	// Checks if there is a new file to write to disk
 	if len(returnPayload.File) == 0{
-		return
+		return nil
 	}
-
-	outFile, _ := os.Create(cfg.ClientKeepass.Path)
 
 	decodedFile, err := base64.StdEncoding.DecodeString(returnPayload.File)
 	if err != nil{
-		log.Fatal(err)
+		return err
+	}
+
+	outFile, err := os.Create(cfg.ClientKeepass.Path)
+	if err != nil{
+		return err
 	}
 
 	_, err = outFile.Write(decodedFile)
 	if err != nil {
-		return 
+		return err
 	}
-
-	defer resp.Body.Close()
+	return outFile.Close()
 }
