@@ -27,7 +27,11 @@ func main() {
 		client.HandlingRequest(cfg)
 	case "pubKey":
 		privateKey, _ := k.GetPublicAndPrivateKey(cfg.Ed25519private.Path)
-		k.PrintPublicKey(privateKey)
+		if err := k.PrintPublicKey(privateKey); err != nil{
+			fmt.Println("While extracting the public from the private key the following error occurred: ", err)
+		}
+	case "help":
+		fmt.Println("Possible actions: \nserver\nclient\npubKey")
 	default:
 		fmt.Println("No such options")
 	}
