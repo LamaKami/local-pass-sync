@@ -28,7 +28,6 @@ func HandlingRequest(cfg c.Config){
 	if err != nil{
 		log.Fatal("While creating the post request, the following error occurred: ", err)
 	}
-
 	resp, err := createClient().Do(req)
 	if err != nil {
 		log.Fatal(err)
