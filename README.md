@@ -1,3 +1,5 @@
+#Work in progress, dont use it yet !
+
 # local-pass-sync
 This solution is for everyone who wants to keep there keepass file only on your devices.
 It uses https for the server-client communication and ed25519 keys for the authorization.
@@ -70,12 +72,13 @@ The `config.yaml` file is very important for the program to work. You need to cu
 2. Get on all others devices (replaces local file with server file)
 
 ### Good to know:
-* It takes some time on a raspberry to unlock and lock the files. On a Pi 4 it takes xx seconds to update the file.
 * Make a backup of the keepass file if something goes wrong
+* If you add a public key you have to restart the server
 
 ### Additional TODOs
 * File history on the server for each client
 * Improving logging
+* Run without go
 
 
 ## Acknowledgment:<br>
