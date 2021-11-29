@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/tobischo/gokeepasslib"
 	"log"
+	"net/http"
 	"os"
 	"time"
 )
@@ -47,10 +48,9 @@ func saveAndLockDatabase(path string, db *gokeepasslib.Database) error{
 		return err
 	}
 
-	if err := db.LockProtectedEntries(); err != nil {
-		return err
-	}
+	if err := db.LockProtectedEntries(); err != nil { return err }
 
+	//LockProtectedEntries does not need to be called, since the documentation says that Encode already calls it
 	keepassEncoder := gokeepasslib.NewEncoder(file)
 	if err := keepassEncoder.Encode(db); err != nil {
 		return err
@@ -147,4 +147,27 @@ func createNewEntry(clientEntry gokeepasslib.Entry, serverDb *gokeepasslib.Datab
 
 	serverDb.Content.Root.Groups[0].Entries = append(serverDb.Content.Root.Groups[0].Entries, entry)
 	*fileModified = true
+}
+
+// unlocks the client and server database and returns the pointer for both
+func unlockDatabases(clientFile []byte, serverFile []byte) (*gokeepasslib.Database, *gokeepasslib.Database, error){
+	clientDb, err := unlockDatabase(clientFile, cfg.Keepass.Password)
+	if err != nil{
+		return nil, nil, err
+	}
+
+	serverDb, err := unlockDatabase(serverFile, cfg.Keepass.Password)
+	return clientDb, serverDb, err
+}
+
+// if some client entries are newer than the server entries, we create a new file and send it back to the client
+func createNewKeepassFile(w http.ResponseWriter, clientDb *gokeepasslib.Database, serverDb *gokeepasslib.Database) error{
+	LockDatabase(clientDb)
+	if err := saveAndLockDatabase(cfg.Keepass.ServerPath, serverDb); err != nil{
+		return err
+	}
+
+	payload := createResponse("", getServerDb(), "", "File was successfully modified by the server")
+	err := sendResponseToClient(w, payload, 200)
+	return err
 }

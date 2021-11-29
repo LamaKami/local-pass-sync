@@ -10,13 +10,14 @@ import (
 	k "local-pass-sync/key"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"sync"
 )
 
 var (
-	createUserRe = regexp.MustCompile(`^/compare[/]*$`)
-	cfg c.Config
+	keepassRe = regexp.MustCompile(`^/keepass[/]*$`)
+	cfg            c.Config
 	mut sync.Mutex
 )
 
@@ -49,8 +50,8 @@ func handleRequest(){
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/compare",userH)
-	mux.Handle("/compare/",userH)
+	mux.Handle("/keepass",userH)
+	mux.Handle("/keepass/",userH)
 	err := http.ListenAndServeTLS(":"+cfg.Server.Port, cfg.SslCertificate.SelfSignedCertificate, cfg.SslCertificate.Key, mux)
 	if err != nil {
 		log.Fatal(err)
@@ -65,9 +66,19 @@ func (h *userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer mut.Unlock()
 
 	switch {
-	case r.Method == http.MethodPost && createUserRe.MatchString(r.URL.Path):
+	case r.Method == http.MethodPatch && keepassRe.MatchString(r.URL.Path):
 		if err := h.Compare(w, r); err != nil{
 			log.Println("The following error occurred while calling the compare endpoint: ", err)
+		}
+		return
+	case r.Method == http.MethodGet && keepassRe.MatchString(r.URL.Path):
+		if err := h.GetFile(w, r); err != nil{
+			log.Println("The following error occurred while calling the getFile endpoint: ", err)
+		}
+		return
+	case r.Method == http.MethodPut && keepassRe.MatchString(r.URL.Path):
+		if err := h.ReplaceFile(w, r); err != nil{
+			log.Println("The following error occurred while calling the getFile endpoint: ", err)
 		}
 		return
 	default:
@@ -113,40 +124,69 @@ func (h *userHandler) Compare(w http.ResponseWriter, r *http.Request) error{
 	return err
 }
 
-// checks if the signature matches the file for the public key which the client has sent,
-// creates a 401 response if it couldn't verify
-func decodeFileAndVerify(w http.ResponseWriter, file string, signature string, publicKey ed25519.PublicKey) ([]byte, error, bool){
-	decodedFile, err := base64.StdEncoding.DecodeString(file)
+func (h *userHandler) GetFile(w http.ResponseWriter, r *http.Request) error{
+	var p Payload
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		internalServerError(w)
+		return err
+	}
+
+	// checks if the public is in the authorized keys and gets ed25519.PublicKey from the map if it is there
+	publicKey, ok := h.store.pk[p.Key]
+	if !ok {
+		resp := createResponse("", nil, "", "You are not authorized!")
+		err := sendResponseToClient(w, resp, 401)
+		return err
+	}
+
+	err, verified := verifyMessage(w, p.Message, p.Signature, publicKey)
 	if err != nil{
-		return nil, err, false
+		return err
+	}
+	if !verified {
+		return nil
 	}
 
-	decodedSignature, err := base64.StdEncoding.DecodeString(signature)
-	if err != nil{
-		return nil, err, false
-	}
+	file := getServerDb()
+	resp := createResponse("", file, "", "File successfully returned from server.")
+	err = sendResponseToClient(w, resp, 200)
 
-	isCorrectVerified := ed25519.Verify(publicKey, decodedFile, decodedSignature)
-
-	if !isCorrectVerified {
-		payload := createResponse("", nil, "", "The message could not be verified.\n " +
-			"Maybe you used the wrong private key or the given public key is not your key.")
-		err := sendResponseToClient(w, payload, 401)
-		return nil, err, isCorrectVerified
-	}
-
-	return decodedFile, nil, isCorrectVerified
+	return err
 }
 
-// unlocks the client and server database and returns the pointer for both
-func unlockDatabases(clientFile []byte, serverFile []byte) (*gokeepasslib.Database, *gokeepasslib.Database, error){
-	clientDb, err := unlockDatabase(clientFile, cfg.ClientKeepass.Password)
-	if err != nil{
-		return nil, nil, err
+func (h *userHandler) ReplaceFile(w http.ResponseWriter, r *http.Request) interface{} {
+	var p Payload
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		internalServerError(w)
+		return err
 	}
 
-	serverDb, err := unlockDatabase(serverFile, cfg.ServerKeepass.Password)
-	return clientDb, serverDb, err
+	// checks if the public is in the authorized keys and gets ed25519.PublicKey from the map if it is there
+	publicKey, ok := h.store.pk[p.Key]
+	if !ok {
+		payload := createResponse("", nil, "", "You are not authorized!")
+		err := sendResponseToClient(w, payload, 401)
+		return err
+	}
+
+	// Verify ed25519 message and signature
+	clientFile, err, verified := decodeFileAndVerify(w, p.File, p.Signature, publicKey)
+	if err != nil{
+		return err
+	}
+	if !verified {
+		return nil
+	}
+
+	err = os.WriteFile(cfg.Keepass.ServerPath, clientFile, 0644)
+	if err != nil{
+		return err
+	}
+
+	resp := createResponse("", nil, "", "File successfully replaced on the server.")
+	err = sendResponseToClient(w, resp, 200)
+
+	return err
 }
 
 // if the client entries are same or older than the server entries, we just send the server file back to the client
@@ -155,23 +195,6 @@ func closeFilesAndSendResponse(w http.ResponseWriter, clientDb *gokeepasslib.Dat
 	LockDatabase(serverDb)
 	payload := createResponse("", make([]byte, 0), "", "Success, but no need to change files")
 	return sendResponseToClient(w, payload, 200)
-}
-
-// if some client entries are newer than the server entries, we create a new file and send it back to the client
-func createNewKeepassFile(w http.ResponseWriter, clientDb *gokeepasslib.Database, serverDb *gokeepasslib.Database) error{
-	LockDatabase(clientDb)
-	if err := saveAndLockDatabase(cfg.ServerKeepass.Path, serverDb); err != nil{
-		return err
-	}
-
-	serverFile, err := ioutil.ReadFile(cfg.ServerKeepass.Path)
-	if err != nil{
-		return err
-	}
-
-	payload := createResponse("", serverFile, "", "File was successfully modified by the server")
-	err = sendResponseToClient(w, payload, 200)
-	return err
 }
 
 // creates a response body which can used for sendResponseToClient
@@ -191,10 +214,10 @@ func createResponse(key string, serverFile []byte, sig string, message string)[]
 }
 
 // sends a response back with given status and body payload
-func sendResponseToClient(w http.ResponseWriter, payload []byte, status int) error{
+func sendResponseToClient(w http.ResponseWriter, response []byte, status int) error{
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(status)
-	if _, err := w.Write(payload); err != nil {
+	if _, err := w.Write(response); err != nil {
 		return err
 	}
 	return nil
@@ -202,7 +225,7 @@ func sendResponseToClient(w http.ResponseWriter, payload []byte, status int) err
 
 // returns the byte representation from the keepass file on the server
 func getServerDb() []byte{
-	file, err := ioutil.ReadFile(cfg.ServerKeepass.Path)
+	file, err := ioutil.ReadFile(cfg.Keepass.ServerPath)
 	if err != nil{
 		log.Fatal(err)
 	}
