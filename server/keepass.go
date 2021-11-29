@@ -125,6 +125,8 @@ func compareLastModificationTime(serverEntry *gokeepasslib.Entry, clientEntry go
 				serverEntry.Values[index].Value.Content = clientEntry.Values[index].Value.Content
 			}
 		}
+
+		serverEntry.Times.LastModificationTime = clientEntry.Times.LastModificationTime
 		*fileModified = true
 	} else if time.Time(*serverEntry.Times.LastModificationTime).After(time.Time(*clientEntry.Times.LastModificationTime))  {
 		// we dont need to change something if a newer version of an entry is on the server because we are returning the server file
