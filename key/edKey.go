@@ -88,13 +88,19 @@ func bytesToPublicKey(fileKey []byte) ed25519.PublicKey{
 }
 
 // GetPublicAndPrivateKey loads the keys from the file in the path
-func GetPublicAndPrivateKey(path string) (ed25519.PrivateKey, ed25519.PublicKey){
+func GetPublicAndPrivateKey(path string, ed25519Password string) (ed25519.PrivateKey, ed25519.PublicKey){
 	privateKeyFileRead, err := ioutil.ReadFile(path)
 	if err != nil{
 		log.Fatal("Error while reading file: ", path, "\n", err)
 	}
 
-	key, err := ssh.ParseRawPrivateKey(privateKeyFileRead)
+	var key interface{}
+	if len(ed25519Password) > 0{
+		key, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKeyFileRead, []byte(ed25519Password))
+	}else {
+		key, err = ssh.ParseRawPrivateKey(privateKeyFileRead)
+	}
+
 	if err != nil{
 		log.Fatal("Error while parsing private key: ", err)
 	}
@@ -115,7 +121,7 @@ func PrintPublicKey(privateKey ed25519.PrivateKey) error{
 	}
 
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-	fmt.Println(string(pemEncodedPub))
+	fmt.Print(string(pemEncodedPub))
 	return nil
 }
 
