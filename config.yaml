@@ -18,7 +18,7 @@ keepass:
   client_path: exampleFiles/exampleClient.kdbx
   # needed on server
   server_path: exampleFiles/exampleServer.kdbx
-  # needed on both
+  # needed on server
   password: abcdefg12345678
 
 ssl_certificate:

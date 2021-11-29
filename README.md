@@ -56,6 +56,8 @@ The `config.yaml` file is very important for the program to work. You need to cu
 
 
 ### Calls
+* Starting server:
+  * `go run main.go server`
 * Get:
     * `go run main.go getFile` downloads the keepass file from the server and replaces it with the local file
 * Patch:
@@ -69,9 +71,11 @@ The `config.yaml` file is very important for the program to work. You need to cu
 
 ### Good to know:
 * It takes some time on a raspberry to unlock and lock the files. On a Pi 4 it takes xx seconds to update the file.
+* Make a backup of the keepass file if something goes wrong
 
 ### Additional TODOs
 * File history on the server for each client
+* Improving logging
 
 
 ## Acknowledgment:<br>
