@@ -1,5 +1,3 @@
-#Work in progress, dont use it yet !
-
 # local-pass-sync
 This solution is for everyone who wants to keep there keepass file only on your devices.
 It uses https for the server-client communication and ed25519 keys for the authorization.
@@ -71,9 +69,12 @@ The `config.yaml` file is very important for the program to work. You need to cu
 1. Put with the most recent file (replaces server file with local file)
 2. Get on all others devices (replaces local file with server file)
 
-### Good to know:
+### Important to know:
 * Make a backup of the keepass file if something goes wrong
 * If you add a public key you have to restart the server
+* If you are using a GUI like KeePassXC you have to use it on all your clients. I noticed while using two different GUIs the compare process for two files produced bugs. You could also try it if your GUIs are working together.
+  * MacPass and KeePassXC doesn't work together
+  * Keepass 2 and KeePassXC works together
 
 ### Additional TODOs
 * File history on the server for each client
