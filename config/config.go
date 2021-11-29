@@ -22,20 +22,18 @@ type Config struct {
 		AuthorizedKeysPath string `yaml:"authorized_keys_path"`
 	}
 
-	ClientKeepass struct{
+	Keepass struct{
 		Password	string
-		Path 		string
-	}`yaml:"client_keepass"`
-
-	ServerKeepass struct{
-		Password	string
-		Path 		string
-	}`yaml:"server_keepass"`
+		ServerPath  string `yaml:"server_path"`
+		ClientPath 	string `yaml:"client_path"`
+	}`yaml:"keepass"`
 
 	SslCertificate struct{
 		SelfSignedCertificate string `yaml:"self_signed_certificate"`
 		Key		    		  string
 	}`yaml:"ssl_certificate"`
+
+	LoggingPath string `yaml:"loggingPath"`
 }
 
 
@@ -71,11 +69,11 @@ func addHomePath(cfg *Config) {
 		cfg.Server.AuthorizedKeysPath = filepath.Join(dir, cfg.Server.AuthorizedKeysPath[2:])
 	}
 
-	if strings.HasPrefix(cfg.ClientKeepass.Path, "~/") {
-		cfg.ClientKeepass.Path = filepath.Join(dir, cfg.ClientKeepass.Path[2:])
+	if strings.HasPrefix(cfg.Keepass.ClientPath, "~/") {
+		cfg.Keepass.ClientPath = filepath.Join(dir, cfg.Keepass.ClientPath[2:])
 	}
 
-	if strings.HasPrefix(cfg.ServerKeepass.Path, "~/") {
-		cfg.ServerKeepass.Path = filepath.Join(dir, cfg.ServerKeepass.Path[2:])
+	if strings.HasPrefix(cfg.Keepass.ServerPath, "~/") {
+		cfg.Keepass.ServerPath = filepath.Join(dir, cfg.Keepass.ServerPath[2:])
 	}
 }

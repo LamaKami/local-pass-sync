@@ -1,25 +1,31 @@
-# private ed25519 key
 ed25519private:
+  # needed on the client if the ed25519 has a password (optional)
   password:
+  # needed on the client
   path: ~/.ssh/id_ed25519
-# server
+
 server:
+  # needed on the client
   domain: localhost
+  # needed on the both
   port: 8081
+  # needed on the server
   authorized_keys_path: ~/.ssh/authorized_keys
 
-# password for client_keepass and server_keepass has to be set only on the server
 
-# set path only on client
-client_keepass:
-  path: exampleFiles/exampleClient.kdbx
+keepass:
+  # needed on client
+  client_path: exampleFiles/exampleClient.kdbx
+  # needed on server
+  server_path: exampleFiles/exampleServer.kdbx
+  # needed on both
   password: abcdefg12345678
-# set both only on server
-server_keepass:
-  path: exampleFiles/exampleServer.kdbx
-  password: abcdefg12345678
-# see the documentation to learn how to create the files
-# only on the server needed
+
 ssl_certificate:
-  self_signed_certificate: localhost.crt
-  key: localhost.key
+  # needed on both
+  self_signed_certificate: cert.pem
+  # needed on server
+  key: key.pem
+
+# if you don't want to log anything just keep the entry empty (optional)
+loggingPath: log.txt
